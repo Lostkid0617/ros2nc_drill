@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+  <style>
+    .cluster { fill: none; stroke: #999; stroke-dasharray: 6 4; }
+    .node { rx:8; ry:8; stroke:#666; stroke-width:1; }
+    .hw { fill:#ffe6e6; }
+    .hal { fill:#fff2cc; }
+    .sim { fill:#e6f7ff; }
+    .cm { fill:#e8f6e8; }
+    .ctrl { fill:#ffffff; }
+    .safety { fill:#fff0f5; }
+    .note { fill:#f0f0ff; }
+    .app { fill:#f5f5f5; }
+    .diag { fill:#f2f2f2; }
+    .label { font: 14px 'Arial', sans-serif; fill: #111 }
+    .small { font: 12px 'Arial', sans-serif; fill: #222 }
+    .arrow { stroke: #444; stroke-width:2; fill: none; marker-end: url(#arrowhead); }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#444" />
+    </marker>
+  </defs>
+
+  <!-- Clusters -->
+  <rect x="10" y="40" width="420" height="260" class="cluster" />
+  <text x="20" y="60" class="small">Hardware Layer</text>
+
+  <rect x="430" y="40" width="520" height="420" class="cluster" />
+  <text x="440" y="60" class="small">Control Layer</text>
+
+  <rect x="960" y="40" width="420" height="420" class="cluster" />
+  <text x="970" y="60" class="small">Application Layer</text>
+
+  <!-- Hardware Layer nodes -->
+  <g transform="translate(40,80)">
+    <rect x="0" y="0" width="360" height="70" class="node hw" />
+    <text x="12" y="22" class="label">Physical Machine</text>
+    <text x="12" y="42" class="small">PLC · Spindle Drive · Servo Drives</text>
+  </g>
+
+  <g transform="translate(40,170)">
+    <rect x="0" y="0" width="360" height="70" class="node hal" />
+    <text x="12" y="22" class="label">drill_hardware_interface</text>
+    <text x="12" y="42" class="small">ros2_control Hardware Interface • read()/write()</text>
+  </g>
+
+  <g transform="translate(40,260)">
+    <rect x="0" y="0" width="360" height="70" class="node sim" />
+    <text x="12" y="22" class="label">drill_sim (simulated)</text>
+    <text x="12" y="42" class="small">publishes /drill/joint_states • subscribes /drill/command</text>
+  </g>
+
+  <!-- Control Layer nodes -->
+  <g transform="translate(470,60)">
+    <rect x="0" y="0" width="220" height="70" class="node cm" />
+    <text x="12" y="22" class="label">controller_manager</text>
+    <text x="12" y="42" class="small">ros2_control</text>
+  </g>
+
+  <g transform="translate(720,60)">
+    <rect x="0" y="0" width="220" height="70" class="node ctrl" />
+    <text x="12" y="22" class="label">motion_controller</text>
+    <text x="12" y="42" class="small">trajectory · follow_joint_trajectory</text>
+  </g>
+
+  <g transform="translate(720,160)">
+    <rect x="0" y="0" width="220" height="70" class="node ctrl" />
+    <text x="12" y="22" class="label">drill_task_controller</text>
+    <text x="12" y="42" class="small">task sequencing · DrillTask Action Server</text>
+  </g>
+
+  <g transform="translate(470,160)">
+    <rect x="0" y="0" width="220" height="70" class="node safety" />
+    <text x="12" y="22" class="label">safety_monitor</text>
+    <text x="12" y="42" class="small">E-STOP · limits · inhibit</text>
+  </g>
+
+  <!-- Application Layer nodes -->
+  <g transform="translate(980,80)">
+    <rect x="0" y="0" width="350" height="70" class="node app" />
+    <text x="12" y="22" class="label">planner / job_manager</text>
+    <text x="12" y="42" class="small">generate drill sequences · action clients</text>
+  </g>
+
+  <g transform="translate(980,180)">
+    <rect x="0" y="0" width="350" height="70" class="node app" />
+    <text x="12" y="22" class="label">UI / CLI / REST</text>
+    <text x="12" y="42" class="small">RViz · web dashboard · manual controls</text>
+  </g>
+
+  <g transform="translate(980,280)">
+    <rect x="0" y="0" width="350" height="70" class="node note" />
+    <text x="12" y="22" class="label">drill_msgs</text>
+    <text x="12" y="42" class="small">DrillCommand · DrillStatus · DrillTask Action</text>
+  </g>
+
+  <g transform="translate(980,380)">
+    <rect x="0" y="0" width="350" height="70" class="node diag" />
+    <text x="12" y="22" class="label">diagnostics & logging</text>
+    <text x="12" y="42" class="small">health, metrics, ros2bag</text>
+  </g>
+
+  <!-- Arrows between nodes -->
+  <!-- Physical -> HAL -->
+  <path class="arrow" d="M400 120 L460 200" />
+  <text x="420" y="150" class="small">sensors/actuators</text>
+
+  <!-- HAL -> controller_manager -->
+  <path class="arrow" d="M400 210 L470 160" />
+  <text x="420" y="190" class="small">ros2_control read()/write() /joint_states</text>
+
+  <!-- Simulator -> controller_manager (dashed style) -->
+  <path stroke-dasharray="6 4" class="arrow" d="M400 300 L470 120" />
+  <text x="420" y="260" class="small">joint_states (sim)</text>
+
+  <!-- controller_manager -> motion_controller -->
+  <path class="arrow" d="M690 95 L720 95" />
+
+  <!-- controller_manager -> task_controller -->
+  <path class="arrow" d="M690 200 L720 195" />
+
+  <!-- planner -> task_controller -->
+  <path class="arrow" d="M980 120 L860 200" />
+  <text x="930" y="150" class="small">DrillTask (action)</text>
+
+  <!-- UI -> planner -->
+  <path class="arrow" d="M905 210 L980 210" />
+
+  <!-- UI -> task_controller (start/stop) -->
+  <path class="arrow" d="M905 250 L860 225" />
+  <text x="880" y="240" class="small">start/stop/pause</text>
+
+  <!-- task_controller -> motion_controller -->
+  <path class="arrow" d="M820 195 L820 125" />
+  <text x="740" y="155" class="small">trajectory / feedrate</text>
+
+  <!-- motion_controller -> controller_manager -->
+  <path class="arrow" d="M820 95 L690 95" />
+
+  <!-- motion_controller -> HAL (write actuators) -->
+  <path class="arrow" d="M760 130 L440 240" />
+  <text x="600" y="170" class="small">write actuator outputs</text>
+
+  <!-- task_controller -> drill_msgs topic -->
+  <path stroke-dasharray="3 3" class="arrow" d="M820 220 L980 310" />
+  <text x="880" y="260" class="small">DrillCommand topic</text>
+
+  <!-- HAL -> drill_msgs status -->
+  <path stroke-dasharray="3 3" class="arrow" d="M440 240 L980 310" />
+  <text x="720" y="270" class="small">DrillStatus topic</text>
+
+  <!-- safety -> HAL and safety -> motion_controller -->
+  <path class="arrow" d="M560 200 L420 230" />
+  <path class="arrow" d="M560 190 L760 190" />
+
+  <!-- diagnostics -> CM / HAL / UI -->
+  <path class="arrow" d="M1160 420 L760 120" />
+  <path class="arrow" d="M1160 420 L440 230" />
+  <path class="arrow" d="M1160 420 L920 240" />
+
+  <!-- Labels footer -->
+  <text x="20" y="740" class="small">Generated system architecture diagram for ros2nc_drill (drill_control project) - shows Hardware, Control, and Application layers with main data flows and components.</text>
+
+</svg>

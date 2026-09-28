@@ -12,7 +12,11 @@
   - drill_sim：简单的钻床仿真节点，发布 /drill/joint_states，订阅 /drill/command（支持 start/stop/set_rpm 指令）。
   - drill_bringup：用于启动 drill_sim 的 launch 包（bringup）。
 
-快速开始（本地构建）
+## 系统框图
+
+![System architecture](diagrams/drill_system.svg)
+
+## 快速开始（本地构建）
 1. 环境要求
    - 已安装 ROS2（例如 humble/iron/rolling，确保 source 对应版本的 setup.bash）。
    - colcon 工具（用于构建工作区）。

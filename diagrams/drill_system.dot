@@ -1,0 +1,70 @@
+digraph drill_system {
+  rankdir=LR;
+  node [shape=rectangle, style=filled, fillcolor="#f5f5f5", fontsize=12];
+
+  // Hardware / Physical
+  HW [label="Physical Machine\n(PLC / Spindle Drive / Servo Drives / Encoders / Limit Switches)", shape=folder, fillcolor="#ffe6e6"];
+
+  // Low-level interface
+  HAL [label="drill_hardware_interface\n(ros2_control hardware_interface)\n- read()/write()\n- lifecycle\n- drivers/PLCs\n- safety IO", fillcolor="#fff2cc"];
+  Simulator [label="drill_sim\n(simulated hardware)\n- joint_states\n- command topic", fillcolor="#e6f7ff"];
+
+  // Controller manager & controllers
+  CM [label="controller_manager\n(ros2_control)", fillcolor="#e8f6e8"];
+  MotionCtrl [label="motion_controller\n(FollowJointTrajectory/velocity)", fillcolor="#ffffff"];
+  TaskCtrl [label="drill_task_controller\n(task sequencing - drill patterns)", fillcolor="#ffffff"];
+  Safety [label="safety_monitor\n(EMERGENCY STOP, limits)", fillcolor="#fff0f5"];
+
+  // Messages / orchestrator
+  DrillMsgs [label="drill_msgs\n(DrillCommand, DrillStatus, DrillTaskAction)", shape=note, fillcolor="#f0f0ff"];
+
+  // High-level planning & UI
+  Planner [label="planner / job_manager\n(Generate drill sequences)", fillcolor="#f5f5f5"];
+  UI [label="UI / CLI / REST\n(RVIZ, web dashboard, remote API)", fillcolor="#f5f5f5"];
+
+  // Diagnostics / telemetry
+  Diagnostics [label="diagnostics & logging\n(health, metrics, ros2bag)", fillcolor="#f2f2f2"];
+
+  // Edges
+  HW -> HAL [label="sensors: encoders/limit_switches\nactuators: motor/spindle commands", fontsize=10];
+  Simulator -> CM [label="joint_states", fontsize=10, style=dashed];
+  HAL -> CM [label="ros2_control read()/write()\n/joint_states", fontsize=10];
+
+  CM -> MotionCtrl [label="controller lifecycle / topics", fontsize=10];
+  CM -> TaskCtrl [label="controller lifecycle", fontsize=10];
+
+  Planner -> TaskCtrl [label="drill jobs / tasks\n(ros2 action: DrillTask)", fontsize=10];
+  UI -> Planner [label="user job upload / monitor", fontsize=10];
+  UI -> TaskCtrl [label="start/stop/pause/resume", fontsize=10];
+
+  TaskCtrl -> MotionCtrl [label="trajectory / feedrate / spindle commands", fontsize=10];
+  MotionCtrl -> CM [label="command joint setpoints", fontsize=10];
+  MotionCtrl -> HAL [label="write actuator outputs (via ros2_control)", fontsize=10];
+
+  TaskCtrl -> DrillMsgs [label="DrillCommand topic", fontsize=10, style=dotted];
+  HAL -> DrillMsgs [label="DrillStatus topic", fontsize=10, style=dotted];
+
+  Safety -> HAL [label="emergency stop signal", fontsize=10];
+  Safety -> MotionCtrl [label="inhibit motion", fontsize=10];
+
+  Diagnostics -> CM [label="controller metrics", fontsize=10];
+  Diagnostics -> HAL [label="hardware health", fontsize=10];
+  Diagnostics -> UI [label="telemetry", fontsize=10];
+
+  // grouping
+  subgraph cluster_hw {
+    label="Hardware Layer";
+    style=dashed;
+    HW; HAL; Simulator;
+  }
+  subgraph cluster_ctrl {
+    label="Control Layer";
+    style=dashed;
+    CM; MotionCtrl; TaskCtrl; Safety;
+  }
+  subgraph cluster_top {
+    label="Application Layer";
+    style=dashed;
+    Planner; UI; DrillMsgs; Diagnostics;
+  }
+}

@@ -1,30 +1,69 @@
-# ros2_control
+# ros2nc_drill
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![codecov](https://codecov.io/gh/ros-controls/ros2_control/graph/badge.svg?token=idvm1zJXOf)](https://codecov.io/gh/ros-controls/ros2_control)
+用于用 ROS2 控制数控机床（首个试点为数控钻床）的项目骨架与实验仓库。
 
-This package is a part of the ros2_control framework.
-For more, please check the [documentation](https://control.ros.org/).
+目标
+- 用 ROS2 替代传统 G-code 流程，提供更结构化、可编排且更易集成的机床控制栈。
+- 先提供一个最小可运行的原型（仿真 + 启动/演示节点），后续逐步接入 ros2_control 硬件接口与真实驱动。
 
-## Contributing
+当前状态（2026-09-28）
+- 该仓库基于 ros2_control 的代码结构（fork 自 ros-controls/ros2_control）。
+- 新增了一个最小演示层，用于快速验证 ROS2 通信与控制流程：
+  - drill_sim：简单的钻床仿真节点，发布 /drill/joint_states，订阅 /drill/command（支持 start/stop/set_rpm 指令）。
+  - drill_bringup：用于启动 drill_sim 的 launch 包（bringup）。
 
-As an open-source project, we welcome each contributor, regardless of their background and experience. Pick a [PR](https://github.com/ros-controls/ros2_control/pulls) and review it, or [create your own](https://github.com/ros-controls/ros2_control/contribute)!
-If you are new to the project, please read the [contributing guide](https://control.ros.org/rolling/doc/contributing/contributing.html) for more information on how to get started. We are happy to help you with your first contribution.
+快速开始（本地构建）
+1. 环境要求
+   - 已安装 ROS2（例如 humble/iron/rolling，确保 source 对应版本的 setup.bash）。
+   - colcon 工具（用于构建工作区）。
 
-## Build status
+2. 获取代码并放入工作区
+```bash
+# 假设在 ~/ws_drill
+mkdir -p ~/ws_drill/src
+cd ~/ws_drill/src
+# 克隆整个仓库或仅复制 drill_sim 与 drill_bringup 两个包到 src/
+# 例如：
+git clone https://github.com/Lostkid0617/ros2nc_drill.git
+# 或直接把 drill_sim/ 和 drill_bringup/ 目录放到 src/
+```
 
-ROS2 Distro | Branch | Build status | Documentation | Package Build
-:---------: | :----: | :----------: | :-----------: | :---------------:
-**Rolling** | [`master`](https://github.com/ros-controls/ros2_control/tree/master) | [![Rolling Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/rolling-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/rolling-binary-build.yml?branch=master) <br> [![Rolling Semi-Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/rolling-semi-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/rolling-semi-binary-build.yml?branch=master) <br> [![build.ros2.org](https://build.ros2.org/buildStatus/icon?job=Rdev__ros2_control__ubuntu_resolute_amd64&subject=build.ros2.org)](https://build.ros2.org/job/Rdev__ros2_control__ubuntu_resolute_amd64/) | [Documentation](https://control.ros.org/master/index.html) <br> [API Reference](https://control.ros.org/master/doc/api/index.html) | [![Build Status](https://build.ros2.org/buildStatus/icon?job=Rbin_uR64__ros2_control__ubuntu_resolute_amd64__binary)](https://build.ros2.org/job/Rbin_uR64__ros2_control__ubuntu_resolute_amd64__binary/)
-**Lyrical** | [`master`](https://github.com/ros-controls/ros2_control/tree/master) | See above <br> [![build.ros2.org](https://build.ros2.org/buildStatus/icon?job=Ldev__ros2_control__ubuntu_resolute_amd64&subject=build.ros2.org)](https://build.ros2.org/job/Ldev__ros2_control__ubuntu_resolute_amd64/) | [Documentation](https://control.ros.org/master/index.html) <br> [API Reference](https://control.ros.org/master/doc/api/index.html) | [![Build Status](https://build.ros2.org/buildStatus/icon?job=Lbin_uR64__ros2_control__ubuntu_resolute_amd64__binary)](https://build.ros2.org/job/Rbin_uR64__ros2_control__ubuntu_resolute_amd64__binary/)
-**Kilted** | [`kilted`](https://github.com/ros-controls/ros2_control/tree/kilted) | [![Kilted Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/kilted-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/kilted-binary-build.yml?branch=master) <br> [![Kilted Semi-Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/kilted-semi-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/kilted-semi-binary-build.yml?branch=master) <br> [![build.ros2.org](https://build.ros2.org/buildStatus/icon?job=Kdev__ros2_control__ubuntu_noble_amd64&subject=build.ros2.org)](https://build.ros2.org/job/Kdev__ros2_control__ubuntu_noble_amd64/) | [Documentation](https://control.ros.org/kilted/index.html) <br> [API Reference](https://control.ros.org/kilted/doc/api/index.html) | [![Build Status](https://build.ros2.org/buildStatus/icon?job=Kbin_uN64__ros2_control__ubuntu_noble_amd64__binary)](https://build.ros2.org/job/Kbin_uN64__ros2_control__ubuntu_noble_amd64__binary/)
-**Jazzy** | [`jazzy`](https://github.com/ros-controls/ros2_control/tree/jazzy) | [![Rolling Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/jazzy-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/jazzy-binary-build.yml?branch=master) <br> [![Rolling Semi-Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/jazzy-semi-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/jazzy-semi-binary-build.yml?branch=master) <br> [![build.ros2.org](https://build.ros2.org/buildStatus/icon?job=Jdev__ros2_control__ubuntu_noble_amd64&subject=build.ros2.org)](https://build.ros2.org/job/Jdev__ros2_control__ubuntu_noble_amd64/) | [Documentation](https://control.ros.org/jazzy/index.html) <br> [API Reference](https://control.ros.org/jazzy/doc/api/index.html) | [![Build Status](https://build.ros2.org/buildStatus/icon?job=Jbin_uN64__ros2_control__ubuntu_noble_amd64__binary)](https://build.ros2.org/job/Jbin_uN64__ros2_control__ubuntu_noble_amd64__binary/)
-**Humble** | [`humble`](https://github.com/ros-controls/ros2_control/tree/humble) | [![Humble Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/humble-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/humble-binary-build.yml?branch=master) <br> [![Humble Semi-Binary Build](https://github.com/ros-controls/ros2_control/actions/workflows/humble-semi-binary-build.yml/badge.svg?branch=master)](https://github.com/ros-controls/ros2_control/actions/workflows/humble-semi-binary-build.yml?branch=master) <br> [![build.ros2.org](https://build.ros2.org/buildStatus/icon?job=Hdev__ros2_control__ubuntu_jammy_amd64&subject=build.ros2.org)](https://build.ros2.org/job/Hdev__ros2_control__ubuntu_jammy_amd64/) | [Documentation](https://control.ros.org/humble/index.html) <br> [API Reference](https://control.ros.org/humble/doc/api/index.html) | [![Build Status](https://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__ros2_control__ubuntu_jammy_amd64__binary)](https://build.ros2.org/job/Hbin_uJ64__ros2_control__ubuntu_jammy_amd64__binary/)
+3. 安装依赖并构建
+```bash
+cd ~/ws_drill
+rosdep update || true
+rosdep install --from-paths src --ignore-src -r -y || true
+colcon build --symlink-install
+source install/setup.bash
+```
 
-## Docker images
+4. 运行
+- 直接运行 drill_sim 节点：
+```bash
+ros2 run drill_sim drill_sim
+```
+- 使用 bringup launch（会启动 drill_sim）：
+```bash
+ros2 launch drill_bringup bringup_launch.py
+```
 
-There are a few published docker images that come with the latest releases. More information about them can be found in the `.docker` folder. You can pull them under these tags: `ghcr.io/ros-controls/ros2_control_release` or `ghcr.io/ros-controls/ros2_control_source`.
+5. 简单验证
+```bash
+# 在另一个终端（记得 source install/setup.bash）
+ros2 topic echo /drill/joint_states
+ros2 topic pub /drill/command std_msgs/String "data: 'start'" -1
+ros2 topic pub /drill/command std_msgs/String "data: 'set_rpm 1200'" -1
+ros2 topic pub /drill/command std_msgs/String "data: 'stop'" -1
+```
 
-## Acknowledgements
+接下来的工作建议
+- 把通信消息从 std_msgs/String 替换为专用的 drill_msgs（例如 DrillCommand/DrillStatus），以便表达更丰富的任务与状态。
+- 基于 ros2_control 实现 drill_hardware_interface（read/write + lifecycle），与 controller_manager 集成真机驱动。
+- 添加一个 drill_controller 包，负责任务编排（钻孔序列、点阵钻孔、刀具管理、错误处理）。
+- 增加单元测试、CI（GitHub Actions）和使用文档（示意图、流程图、安全说明）。
 
-The project has received major contributions from companies and institutions [listed on control.ros.org](https://control.ros.org/rolling/doc/acknowledgements/acknowledgements.html)
+贡献
+- 欢迎通过 PR 提交新增功能、修复或说明文档。如果你希望我把某个功能作为 PR 提交到本仓库，请告知我需要的变更与目标分支。
+
+License
+- Apache-2.0（继承本仓库现有许可）

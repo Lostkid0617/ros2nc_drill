@@ -1,7 +1,6 @@
-"""parse_step.py
-Utility functions to load a STEP file, perform simple feature recognition (cylindrical holes and large planar faces), and export a mesh (GLB/GLTF) for web viewing.
-
-This is a PoC-level implementation: detection is rule-based and may need improvements for real-world CAD data.
+"""parse_step.py - improved for hole pattern detection and depth estimation using mesh vertices.
+PoC-level: detects cylindrical surfaces, estimates depths via mesh vertex projection onto hole axis,
+clusters features into pattern groups by rounding centers.
 """
 import os
 import json
@@ -22,8 +21,7 @@ from OCC.Core.TopAbs import TopAbs_FACE
 from OCC.Core.TopoDS import topods
 from OCC.Core.BRep import BRep_Tool
 from OCC.Core.Geom import Geom_CylindricalSurface
-from OCC.Core.gp import gp_Ax1, gp_Pnt, gp_Dir
-from OCC.Core.BRepTools import breptools_Read
+from OCC.Core.gp import gp_Pnt
 
 
 def load_step_to_shape(step_path: str):
@@ -54,8 +52,7 @@ def stl_to_glb(stl_path: str, glb_path: str):
 
 
 def detect_cylindrical_holes(shape) -> List[Dict[str, Any]]:
-    """Simple rule-based detection: find faces whose underlying surface is cylindrical.
-    For each cylinder face, report axis (point, dir), radius, and estimate depth by ray-casting in axis direction.
+    """Detect cylindrical surfaces and extract basic parameters (id,type,radius,axis_point,axis_dir).
     """
     features = []
     try:
@@ -70,22 +67,22 @@ def detect_cylindrical_holes(shape) -> List[Dict[str, Any]]:
             except Exception:
                 cyl = None
             if cyl is not None:
-                # Extract radius and axis
                 radius = cyl.Radius()
-                # Cylindrical surface's position gives axis
                 pos = cyl.Position()
+                loc = pos.Location()
                 ax = pos.Axis()
-                pnt = pos.Location()
-                center = (pnt.X(), pnt.Y(), pnt.Z())
-                axis = (ax.Direction().X(), ax.Direction().Y(), ax.Direction().Z())
+                axis_point = (float(loc.X()), float(loc.Y()), float(loc.Z()))
+                axis_dir = (float(ax.Direction().X()), float(ax.Direction().Y()), float(ax.Direction().Z()))
+                # Use the axis point as center proxy
+                center = list(axis_point)
                 features.append({
                     "id": f"hole_{idx}",
                     "type": "cylindrical_hole",
                     "radius": float(radius),
-                    "center": [float(center[0]), float(center[1]), float(center[2])],
-                    "axis": [float(axis[0]), float(axis[1]), float(axis[2])],
-                    # depth unknown here; placeholder None to be estimated later
+                    "center": center,
+                    "axis": list(axis_dir),
                     "depth": None,
+                    "pattern_group": None,
                 })
                 idx += 1
             exp.Next()
@@ -94,26 +91,71 @@ def detect_cylindrical_holes(shape) -> List[Dict[str, Any]]:
     return features
 
 
-def estimate_depths_via_bbox(shape, features: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Fallback quick depth estimation: use shape bounding box project along hole axis and estimate overlap length.
-    This is NOT precise but provides an initial suggested depth for PoC.
+def estimate_depths_via_mesh_vertices(stl_path: str, features: List[Dict[str, Any]], tol_rad: float = 0.5):
+    """Estimate axial extents of features by analysing mesh vertices close to the cylinder axis.
+    stl_path: path to the mesh representing the solid
+    For each feature, we project mesh vertices onto the axis and select those within radius+tol_rad.
+    The depth is estimated as the spread (max-min) of projected coordinates in axis direction.
     """
     try:
-        # export temporary mesh and use trimesh bounding box as a rough method
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_stl = os.path.join(tmp, "tmp.stl")
-            mesh_shape_to_stl(shape, tmp_stl, linear_deflection=0.5)
-            tmesh = trimesh.load_mesh(tmp_stl)
-            bbox = tmesh.bounds  # [[minx,miny,minz],[maxx,maxy,maxz]]
-            for f in features:
-                axis = np.array(f.get('axis', [0, 0, 1]))
-                # project bbox corners on axis to get approximate extents
-                corners = np.array(np.meshgrid(*[[bbox[0][i], bbox[1][i]] for i in range(3)])).T.reshape(-1,3)
-                proj = corners.dot(axis)
-                est_len = float(proj.max() - proj.min())
-                f['depth'] = round(est_len * 0.9, 3)  # a conservative suggestion
+        mesh = trimesh.load_mesh(stl_path, process=False)
+        verts = np.asarray(mesh.vertices)
+        if verts.size == 0:
+            return features
+
+        for f in features:
+            center = np.array(f.get('center', [0.0, 0.0, 0.0]), dtype=float)
+            axis = np.array(f.get('axis', [0.0, 0.0, 1.0]), dtype=float)
+            radius = float(f.get('radius', 1.0))
+            if np.linalg.norm(axis) < 1e-6:
+                axis = np.array([0.0, 0.0, 1.0])
+            axis = axis / np.linalg.norm(axis)
+            # vector from axis point to verts
+            rel = verts - center
+            # projection length along axis
+            proj = rel.dot(axis)
+            # closest point on axis for each vertex
+            closest = center + np.outer(proj, axis)
+            # radial distances
+            radial = np.linalg.norm(verts - closest, axis=1)
+            # select vertices near cylinder radius (allow tolerance)
+            mask = radial < (radius + tol_rad)
+            if np.any(mask):
+                proj_sel = proj[mask]
+                # depth is extent of selected projections
+                depth = float(np.max(proj_sel) - np.min(proj_sel))
+                # Depth might be negative depending on orientation; take absolute
+                f['depth'] = round(abs(depth), 4)
+            else:
+                f['depth'] = None
     except Exception:
         traceback.print_exc()
+    return features
+
+
+def group_features_into_patterns(features: List[Dict[str, Any]], position_tol: float = 1.0, radius_tol: float = 0.5) -> List[Dict[str, Any]]:
+    """Group features into pattern groups based on rounded center positions and similar radii.
+    Simple approach: quantize center coordinates with position_tol and radius with radius_tol.
+    Assign pattern_group strings like "group_0", "group_1".
+    """
+    groups = {}
+    group_ids = []
+    for f in features:
+        center = np.array(f.get('center', [0.0,0.0,0.0]), dtype=float)
+        radius = float(f.get('radius', 0.0))
+        # quantize
+        key_pos = tuple(np.round(center / position_tol).astype(int).tolist())
+        key_rad = int(round(radius / radius_tol))
+        key = (key_rad, key_pos)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(f)
+    # assign ids
+    for idx, (k, items) in enumerate(groups.items()):
+        gid = f'pattern_{idx}'
+        for it in items:
+            it['pattern_group'] = gid
+        group_ids.append({'group_id': gid, 'count': len(items), 'radius_approx': float(k[0]*radius_tol)})
     return features
 
 
@@ -132,7 +174,8 @@ def parse_step_file(step_path: str, out_dir: str):
     stl_to_glb(stl_path, glb_path)
 
     features = detect_cylindrical_holes(shape)
-    features = estimate_depths_via_bbox(shape, features)
+    features = estimate_depths_via_mesh_vertices(stl_path, features, tol_rad=0.8)
+    features = group_features_into_patterns(features, position_tol=2.0, radius_tol=0.5)
 
     meta = {
         "name": name,

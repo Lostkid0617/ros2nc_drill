@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+<!-- Simple Xacro model for 4-axis drilling machine: X (prismatic), Y (prismatic), Z (prismatic), A (revolute)
+     This is a minimal model intended for ros2_control + Gazebo simulation PoC.
+-->
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="drill_machine">
+  <xacro:property name="prefix" value=""/>
+
+  <!-- Base link -->
+  <link name="${prefix}base_link">
+    <visual>
+      <geometry>
+        <box size="0.4 0.4 0.05"/>
+      </geometry>
+      <material name="gray"><color rgba="0.6 0.6 0.6 1.0"/></material>
+    </visual>
+    <inertial>
+      <mass value="5.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <!-- X axis carriage -->
+  <link name="${prefix}x_carriage">
+    <visual>
+      <geometry><box size="0.2 0.12 0.04"/></geometry>
+      <material name="blue"><color rgba="0.2 0.4 0.8 1.0"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}x_axis_joint" type="prismatic">
+    <parent link="${prefix}base_link"/>
+    <child link="${prefix}x_carriage"/>
+    <origin xyz="0 0 0.025" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.15" upper="0.15" effort="1000" velocity="0.5"/>
+  </joint>
+
+  <!-- Y axis carriage (mounted on X carriage) -->
+  <link name="${prefix}y_carriage">
+    <visual>
+      <geometry><box size="0.12 0.18 0.04"/></geometry>
+      <material name="green"><color rgba="0.2 0.8 0.4 1.0"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}y_axis_joint" type="prismatic">
+    <parent link="${prefix}x_carriage"/>
+    <child link="${prefix}y_carriage"/>
+    <origin xyz="0 0 0.02" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.1" upper="0.1" effort="1000" velocity="0.5"/>
+  </joint>
+
+  <!-- Z axis (spindle head) -->
+  <link name="${prefix}z_carriage">
+    <visual>
+      <geometry><box size="0.06 0.06 0.18"/></geometry>
+      <material name="red"><color rgba="0.8 0.2 0.2 1.0"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}z_axis_joint" type="prismatic">
+    <parent link="${prefix}y_carriage"/>
+    <child link="${prefix}z_carriage"/>
+    <origin xyz="0 0 0.09" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.15" upper="0.05" effort="1000" velocity="0.3"/>
+  </joint>
+
+  <!-- A axis (rotary table) attached to base as a separate branch representing the rotating workpiece -->
+  <link name="${prefix}a_table">
+    <visual>
+      <geometry>
+        <cylinder radius="0.08" length="0.02"/>
+      </geometry>
+      <material name="metal"><color rgba="0.7 0.7 0.7 1.0"/></material>
+    </visual>
+    <inertial>
+      <mass value="2.0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="${prefix}a_axis_joint" type="revolute">
+    <parent link="${prefix}base_link"/>
+    <child link="${prefix}a_table"/>
+    <origin xyz="0.12 0 0.035" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.1416" upper="3.1416" effort="200" velocity="3.14"/>
+  </joint>
+
+  <!-- tool link (drill) mounted on z_carriage -->
+  <link name="${prefix}tool_link">
+    <visual>
+      <geometry><cylinder radius="0.01" length="0.12"/></geometry>
+      <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+      <material name="toolcol"><color rgba="0.2 0.2 0.2 1.0"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}tool_fixed_joint" type="fixed">
+    <parent link="${prefix}z_carriage"/>
+    <child link="${prefix}tool_link"/>
+    <origin xyz="0 0 -0.09" rpy="0 0 0"/>
+  </joint>
+
+  <!-- transmissions / ros2_control hardware tags -->
+  <xacro:macro name="ros2_control_transmission" params="joint name">
+    <transmission name="${joint}_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${joint}">
+        <hardwareInterface>position</hardwareInterface>
+      </joint>
+      <actuator name="${joint}_motor">
+        <hardwareInterface>position</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+  <!-- Add transmissions for joints -->
+  <xacro:ros2_control_transmission joint="${prefix}x_axis_joint"/>
+  <xacro:ros2_control_transmission joint="${prefix}y_axis_joint"/>
+  <xacro:ros2_control_transmission joint="${prefix}z_axis_joint"/>
+  <xacro:ros2_control_transmission joint="${prefix}a_axis_joint"/>
+
+</robot>

@@ -1,0 +1,3 @@
+<launch>
+  <!-- This is a fallback XML launch for older ROS2 setups. Prefer using the Python launch in launch/sim_launch.py -->
+</launch>
